@@ -29,6 +29,8 @@ HEADERS += \
     dlc.h \
     ecm.h \
     ecu.h \
+    nsobdlink.h \
+    nssubaru.h \
     obd2.h \
     obdlink.h \
     obdlinkconfig.h \

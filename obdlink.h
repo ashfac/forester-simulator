@@ -13,38 +13,44 @@
 class OBDLink
 {
 public:
-    using respond_can_callback_t = std::function<void(const can_types::can_msg_t&)>;
-    using respond_serial_callback_t = std::function<void(const std::string&)>;
-
+    using transmit_on_can_bus_callback_t = std::function<void(const can_types::can_msg_t&)>;
+    using send_to_serial_callback_t = std::function<void(const std::string&)>;
+    using protocol_select_callback_t = std::function<void(const nsobdlink::config::obd_protocol_t)>;
 
 private:
     using command_handler_t = std::function<std::string(const std::vector<std::string> &)>;
     using command_set_t = std::map<std::string, command_handler_t>;
 
 public:
-    OBDLink(const respond_can_callback_t decode_callback, const respond_serial_callback_t encode_callback);
+    OBDLink(const transmit_on_can_bus_callback_t respond_can_callback,
+            const send_to_serial_callback_t respond_serial_callback,
+            const protocol_select_callback_t protocol_select_callback);
 
     void send(const std::string &data);
     void send(const can_types::can_msg_t &message);
 
 private:
     void echo(const std::string &data);
-    void respond(const std::string &response);
-    void respond(const can_types::can_msg_t &message);
+    void send_to_serial(const std::string &response);
+    void transmit_on_can_bus(const can_types::can_msg_t &message);
+
+    std::string format_response(const std::string &str);
 
     size_t min_command_size();
     size_t max_command_size();
 
-
-    static int string_to_number(const std::string &str);
+    static unsigned long hex_string_to_int(const std::string &str);
 
     static std::vector<std::string> get_arguments(const std::string& str);
     static int get_integer_argument(const std::vector<std::string> &args);
-    static nsobdlink::on_off_t get_on_off_argument(const std::vector<std::string> &args);
+    std::string set_on_off_config(const nsobdlink::config::boolean_config_t config_item, const std::vector<std::string> &args);
+    void set_on_off_config(const nsobdlink::config::boolean_config_t config_item, const bool value);
 
 
+    bool is_command(const std::string &request);
+    std::string handle_command(const std::string &request);
     std::string handle_command(const std::string &request, const std::string &args);
-    std::string command_not_implemented(const std::vector<std::string> &args);
+    void handle_can_message(const std::string &request);
 
     // AT commands, in alphabetic order
     std::string handle_AT_at(const std::vector<std::string> &args);
@@ -117,6 +123,9 @@ private:
     std::string handle_ATWM(const std::vector<std::string> &args);
     std::string handle_ATWS(const std::vector<std::string> &args);
     std::string handle_ATZ(const std::vector<std::string> &args);
+
+
+    std::string command_not_implemented(const std::vector<std::string> &args);
 
 private:
     const command_set_t m_command_set = {
@@ -192,17 +201,18 @@ private:
         , { "ATZ", std::bind(&OBDLink::handle_ATZ, this, std::placeholders::_1) }
     };
 
-    const respond_can_callback_t m_respond_can_callback = nullptr;
-    const respond_serial_callback_t m_respond_serial_callback = nullptr;
-
-
-    std::unique_ptr<OBDLinkConfig> m_config;
+    const transmit_on_can_bus_callback_t m_transmit_on_can_bus_callback = nullptr;
+    const send_to_serial_callback_t m_send_to_serial_callback = nullptr;
+    const protocol_select_callback_t m_protocol_select_callback = nullptr;
 
     size_t m_min_command_size;
     size_t m_max_command_size;
 
+    std::unique_ptr<OBDLinkConfig> m_config;
+
     std::string m_request;
     std::string m_last_request;
+
 };
 
 #endif // OBDLINK_H

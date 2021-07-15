@@ -6,15 +6,21 @@
 
 namespace can_types {
 
-    typedef enum : unsigned int {
-        ecu_id_dlc = 0x7DF,
-        ecu_id_ecm = 0x7E0,
-        ecu_id_tcm = 0x7E1
-    } ecu_id_t;
+typedef enum can_bus_protocol: int {
+    iso_15765_4_can_11bit_id_500kbaud,
+    iso_15765_4_can_29bit_id_500kbaud,
+    iso_15765_4_can_11bit_id_250kbaud,
+    iso_15765_4_can_29bit_id_250kbaud,
+    sae_j1939_can_29bit_id_250kbaud,
+    user1_can_11bit_id_125kbaud,
+    user2_can_11bit_id_50kbaud,
+    protocol_unknown = 0xFF,
+} can_bus_protocol_t;
 
+using can_id_t = unsigned int;
 using can_data_t = std::vector<std::byte>;
 
-using can_msg_t = std::pair<ecu_id_t, can_data_t>;
+using can_msg_t = std::pair<can_id_t, can_data_t>;
 
 };
 

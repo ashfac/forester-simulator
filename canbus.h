@@ -13,17 +13,19 @@ class ECU;
 class CanBus
 {
 private:
-    using ecu_ptr_t = std::shared_ptr<ECU>;
+    using ecu_ptr_t = std::shared_ptr<const ECU>;
 
 public:
     CanBus();
 
-    void attach(const ecu_ptr_t);
+    void attach(const ecu_ptr_t &ecu);
+    void detach(const ecu_ptr_t &ecu);
 
-    void transmit(const can_types::can_msg_t &message) const;
+    void transmit(const ecu_ptr_t &sender, const can_types::can_msg_t &message) const;
 
 private:
     std::vector<ecu_ptr_t> m_ecus;
+    can_types::can_bus_protocol_t m_protocol;
 };
 
 #endif // CANBUS_H

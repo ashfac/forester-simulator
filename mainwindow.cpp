@@ -35,9 +35,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(m_Console, &Console::getData, this, &MainWindow::writeToSerial);
 
     openSerialPort();
-    sendToSubaruForester("ATZ\r\n");
-    sendToSubaruForester("ATE0\r\n");
-    sendToSubaruForester("ATE1\r\n");
+    sendToSubaruForester("ATZ\r");
 }
 
 MainWindow::~MainWindow()
@@ -60,7 +58,7 @@ void MainWindow::openSerialPort()
     m_Serial->setFlowControl(p.flowControl);
 
     //TODO: Create a Folder Selection item on Settings Form
-    const QString logDirectory = "C:/Users/CAASAHM/Documents/developement/obd/subaru-forester/logs/";
+    const QString logDirectory = "C:/Users/CAASAHM/Documents/developement/obd/subaruforester/logs/";
 
     if (m_Serial->open(QIODevice::ReadWrite)) {
         m_Console->setEnabled(true);
@@ -71,7 +69,9 @@ void MainWindow::openSerialPort()
         showStatusMessage(tr("Connected to %1 : %2, %3, %4, %5, %6")
                           .arg(m_Serial->portName(), p.stringBaudRate, p.stringDataBits, p.stringParity, p.stringStopBits, p.stringFlowControl));
 
-        m_LogFile = new QFile(logDirectory + QDateTime::currentDateTime().toString("[yyyy-MM-dd_hhmmss]") + " Qt.log");
+//        m_LogFile = new QFile(logDirectory + QDateTime::currentDateTime().toString("[yyyy-MM-dd_hhmmss]") + " Qt.log");
+
+        m_LogFile = new QFile(logDirectory + "debug.log");
 
         if(m_LogFile->open(QIODevice::WriteOnly | QFile::Text | QFile::Append | QFile::Unbuffered)) {
             //TODO: Get the Data Link Device type from the Settings Form

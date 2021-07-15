@@ -1,25 +1,27 @@
 #include "dlc.h"
 
-DLC::DLC(const can_types::ecu_id_t ecu_id, const std::shared_ptr<CanBus> can_bus) :
-    ECU(ecu_id, can_bus)
+DLC::DLC(const can_types::can_id_t can_id, const std::shared_ptr<CanBus> can_bus) :
+    ECU(can_id, can_bus)
 {
+    set_can_bus_protocol(can_types::can_bus_protocol::protocol_unknown);
 }
 
 DLC::~DLC()
 {
 }
 
-void DLC::connect(const data_link_device_t device, receive_callback_t callback)
+void DLC::connect(const data_link_device_t device, respond_serial_callback_t callback)
 {
     m_data_link_device = device;
-    m_receive_callback = callback;
+    m_respond_serial_callback = callback;
 
     switch (m_data_link_device) {
 
     case data_link_device_t::device_obdlink:
-        m_obdlink = new OBDLink(
-                        std::bind(&DLC::on_decoded, this, std::placeholders::_1),
-                        std::bind(&DLC::on_encoded, this, std::placeholders::_1)
+        m_obdlink = std::make_unique<OBDLink>(
+                        std::bind(&DLC::on_respond_can, this, std::placeholders::_1),
+                        std::bind(&DLC::on_respond_serial, this, std::placeholders::_1),
+                        std::bind(&DLC::on_protocol_select, this, std::placeholders::_1)
                     );
         break;
 
@@ -33,8 +35,6 @@ void DLC::disconnect()
     switch (m_data_link_device) {
 
     case data_link_device_t::device_obdlink:
-        delete m_obdlink;
-        m_obdlink = nullptr;
         break;
 
     default:
@@ -42,12 +42,7 @@ void DLC::disconnect()
     }
 }
 
-void DLC::send(const std::string &data)
-{
-    decode(data);
-}
-
-void DLC::decode(const std::string &data)
+void DLC::send(const std::string &request) const
 {
     switch (m_data_link_device) {
 
@@ -56,13 +51,13 @@ void DLC::decode(const std::string &data)
 
     case data_link_device_t::device_obdlink:
         if(m_obdlink) {
-            m_obdlink->send(data);
+            m_obdlink->send(request);
         }
         break;
     }
 }
 
-void DLC::encode(const std::string &data)
+void DLC::send(const can_types::can_msg_t &message) const
 {
     switch (m_data_link_device) {
 
@@ -71,17 +66,56 @@ void DLC::encode(const std::string &data)
 
     case data_link_device_t::device_obdlink:
         if(m_obdlink) {
-            m_obdlink->send(data);
+            m_obdlink->send(message);
         }
     }
 }
 
-void DLC::on_decoded(const can_types::can_msg_t &message) const
+void DLC::on_respond_serial(const std::string &response) const
 {
-    getCanBus()->transmit(message);
+    m_respond_serial_callback(response);
 }
 
-void DLC::on_encoded(const std::string &data) const
+void DLC::on_respond_can(const can_types::can_msg_t &message) const
 {
-    m_receive_callback(data);
+    get_can_bus()->transmit(shared_from_this(), message);
+}
+
+void DLC::on_protocol_select(const nsobdlink::config::obd_protocol_t protocol)
+{
+    switch (protocol) {
+    case nsobdlink::config::obd_protocol::obd_protocol_6_iso_15765_4_can_11bit_id_500kbaud:
+        set_can_bus_protocol(can_types::can_bus_protocol::iso_15765_4_can_11bit_id_500kbaud);
+        break;
+
+    case nsobdlink::config::obd_protocol::obd_protocol_7_iso_15765_4_can_29bit_id_500kbaud:
+        set_can_bus_protocol(can_types::can_bus_protocol::iso_15765_4_can_29bit_id_500kbaud);
+        break;
+
+    case nsobdlink::config::obd_protocol::obd_protocol_8_iso_15765_4_can_11bit_id_250kbaud:
+        set_can_bus_protocol(can_types::can_bus_protocol::iso_15765_4_can_11bit_id_250kbaud);
+        break;
+
+    case nsobdlink::config::obd_protocol::obd_protocol_9_iso_15765_4_can_29bit_id_250kbaud:
+        set_can_bus_protocol(can_types::can_bus_protocol::iso_15765_4_can_29bit_id_250kbaud);
+        break;
+
+    case nsobdlink::config::obd_protocol::obd_protocol_A_sae_j1939_can_29bit_id_250kbaud:
+        set_can_bus_protocol(can_types::can_bus_protocol::sae_j1939_can_29bit_id_250kbaud);
+        break;
+
+    case nsobdlink::config::obd_protocol::obd_protocol_B_user1_can_11bit_id_125kbaud:
+        set_can_bus_protocol(can_types::can_bus_protocol::user1_can_11bit_id_125kbaud);
+        break;
+
+    case nsobdlink::config::obd_protocol::obd_protocol_C_user2_can_11bit_id_50kbaud:
+        set_can_bus_protocol(can_types::can_bus_protocol::user2_can_11bit_id_50kbaud);
+        break;
+
+    default:
+        set_can_bus_protocol(can_types::can_bus_protocol::protocol_unknown);
+        break;
+    }
+
+    get_can_bus()->attach(shared_from_this());
 }
