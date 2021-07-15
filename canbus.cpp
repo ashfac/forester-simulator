@@ -25,7 +25,7 @@ void CanBus::detach(const ecu_ptr_t &ecu)
     }
 }
 
-void CanBus::transmit(const ecu_ptr_t &sender, const can_types::can_msg_t &message) const
+void CanBus::transmit(const ecu_ptr_t &sender, const can::can_msg_t &message) const
 {
     for (auto& ecu : m_ecus) {
         if (ecu != sender) {

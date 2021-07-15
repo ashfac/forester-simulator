@@ -75,9 +75,9 @@ void MainWindow::openSerialPort()
 
         if(m_LogFile->open(QIODevice::WriteOnly | QFile::Text | QFile::Append | QFile::Unbuffered)) {
             //TODO: Get the Data Link Device type from the Settings Form
-            m_SubaruForester->get_dlc()->connect(DLC::data_link_device_t::device_obdlink,
-                                                              std::bind(&MainWindow::onDataLinkReceived, this, std::placeholders::_1)
-                                                              );
+            m_SubaruForester->get_dlc()->connect(
+                        dlc::device_t::obdlink,
+                        std::bind(&MainWindow::onDataLinkReceived, this, std::placeholders::_1));
 
         } else {
             QMessageBox::critical(this, tr("Error"), m_LogFile->errorString());

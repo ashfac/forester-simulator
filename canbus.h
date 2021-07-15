@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstddef>
 
-#include "can_types.h"
+#include "can.h"
 #include "ecu.h"
 
 class ECU;
@@ -21,11 +21,11 @@ public:
     void attach(const ecu_ptr_t &ecu);
     void detach(const ecu_ptr_t &ecu);
 
-    void transmit(const ecu_ptr_t &sender, const can_types::can_msg_t &message) const;
+    void transmit(const ecu_ptr_t &sender, const can::can_msg_t &message) const;
 
 private:
     std::vector<ecu_ptr_t> m_ecus;
-    can_types::can_bus_protocol_t m_protocol;
+    can::protocol_t m_protocol;
 };
 
 #endif // CANBUS_H

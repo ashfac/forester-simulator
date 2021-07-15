@@ -6,7 +6,7 @@
 class ECM : public ECU
 {
 public:
-    ECM(const can_types::can_id_t ecu_id, const std::shared_ptr<CanBus> can_bus);
+    ECM(const can::can_id_t ecu_id, const std::shared_ptr<CanBus> can_bus);
 };
 
 #endif // ECM_H

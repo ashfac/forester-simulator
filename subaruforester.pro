@@ -13,9 +13,10 @@ SOURCES += \
     dlc.cpp \
     ecm.cpp \
     ecu.cpp \
+    elm327.cpp \
+    elm327config.cpp \
     obd2.cpp \
     obdlink.cpp \
-    obdlinkconfig.cpp \
     subaruforester.cpp \
     tcm.cpp \
     main.cpp \
@@ -24,16 +25,18 @@ SOURCES += \
     mainwindow.cpp \
 
 HEADERS += \
-    can_types.h \
+    can.h \
     canbus.h \
     dlc.h \
     ecm.h \
     ecu.h \
-    nsobdlink.h \
-    nssubaru.h \
+    elm.h \
+    elm327.h \
+    elm327config.h \
+    obd.h \
     obd2.h \
     obdlink.h \
-    obdlinkconfig.h \
+    subaru.h \
     subaruforester.h \
     tcm.h \
     console.h \
