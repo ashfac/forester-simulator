@@ -35,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(m_Console, &Console::getData, this, &MainWindow::writeToSerial);
 
     openSerialPort();
-    sendToSubaruForester("ATZ\r");
+//    sendToSubaruForester("ATZ\r");
 }
 
 MainWindow::~MainWindow()
@@ -75,9 +75,9 @@ void MainWindow::openSerialPort()
 
         if(m_LogFile->open(QIODevice::WriteOnly | QFile::Text | QFile::Append | QFile::Unbuffered)) {
             //TODO: Get the Data Link Device type from the Settings Form
-            m_SubaruForester->get_dlc()->connect(
+            m_SubaruForester->get_dlc()->init(
                         dlc::device_t::obdlink,
-                        std::bind(&MainWindow::onDataLinkReceived, this, std::placeholders::_1));
+                        std::bind(&MainWindow::onSubaruForesterReceived, this, std::placeholders::_1));
 
         } else {
             QMessageBox::critical(this, tr("Error"), m_LogFile->errorString());
@@ -93,8 +93,6 @@ void MainWindow::openSerialPort()
 
 void MainWindow::closeSerialPort()
 {
-    m_SubaruForester->get_dlc()->disconnect();
-
     if (m_Serial->isOpen())
         m_Serial->close();
 
@@ -131,10 +129,10 @@ void MainWindow::onSerialReceived()
 
 void MainWindow::sendToSubaruForester(const QByteArray &data)
 {
-    m_SubaruForester->get_dlc()->send(data.toStdString());
+    m_SubaruForester->get_dlc()->request(data.toStdString());
 }
 
-void MainWindow::onDataLinkReceived(const std::string &data)
+void MainWindow::onSubaruForesterReceived(const std::string &data)
 {
     writeToSerial(QByteArray::fromStdString(data));
 }

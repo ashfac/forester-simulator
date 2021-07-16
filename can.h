@@ -7,8 +7,21 @@
 namespace can {
 
 using can_id_t = unsigned int;
-using can_data_t = std::vector<std::byte>;
+using can_byte_t = std::byte;
+using can_data_t = std::vector<can_byte_t>;
 using can_msg_t = std::pair<can_id_t, can_data_t>;
+
+namespace mode {
+
+enum mode : int {
+    disconnected,
+    connected,
+    listen_only
+};
+
+} // namespace mode
+
+using mode_t = can::mode::mode;
 
 namespace protocol {
 

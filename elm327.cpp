@@ -1,18 +1,19 @@
 #include "elm327.h"
 
-Elm327::Elm327(const transmit_on_can_bus_callback_t respond_can_callback,
-               const send_to_serial_callback_t respond_serial_callback,
-               const protocol_select_callback_t protocol_select_callback) :
-    m_transmit_on_can_bus_callback(respond_can_callback)
-  , m_send_to_serial_callback(respond_serial_callback)
-  , m_protocol_select_callback(protocol_select_callback)
-  , m_config(std::make_unique<Elm327Config>())
+Elm327::Elm327( const transmit_callback_t transmit_callback,
+                const respond_callback_t respond_callback,
+                const protocol_select_callback_t protocol_select_callback ) :
+    m_transmit_callback( transmit_callback )
+  , m_respond_callback( respond_callback )
+  , m_protocol_select_callback( protocol_select_callback )
+  , m_config( std::make_unique<Elm327Config>() )
+  , m_can_bus_mode( can::mode::disconnected )
 {
     m_min_command_size = min_command_size();
     m_max_command_size = max_command_size();
 }
 
-void Elm327::send(const std::string &data)
+void Elm327::request( const std::string &data )
 {
     echo(data);
 
@@ -41,15 +42,14 @@ void Elm327::send(const std::string &data)
         m_request = m_request.substr(index + 1);
 
         if ( is_command(request) ) {
-           send_to_serial( handle_command(request) );
+            respond( handle_command(request) );
         } else {
-
+            respond( handle_obd_request(request) );
         }
-
     }
 }
 
-void Elm327::send(const can::can_msg_t &message)
+void Elm327::put(const can::can_msg_t &message)
 {
     (void) message;
 }
@@ -57,144 +57,27 @@ void Elm327::send(const can::can_msg_t &message)
 void Elm327::echo(const std::string &data)
 {
     if (m_config->get_echo()) {
-        m_send_to_serial_callback(format_response(data));
+        m_respond_callback(compose_serial_message(data));
     }
 }
 
-void Elm327::send_to_serial(const std::string &response)
+void Elm327::respond(const std::string &response)
 {
-    if ( response != elm::response_pending ) {
-        m_send_to_serial_callback(format_response(response + "\r>"));
+    if ( response != elm::response::pending ) {
+        m_respond_callback(compose_serial_message(response + "\r>"));
     }
 }
 
-void Elm327::transmit_on_can_bus(const can::can_msg_t &message)
+void Elm327::transmit(const can::can_msg_t &message)
 {
-    m_transmit_on_can_bus_callback(message);
-}
-
-std::string Elm327::format_response(const std::string &str)
-{
-    std::string response = str;
-
-    if (m_config->get_linefeeds()) {
-        size_t index = 0;
-
-        while ( (index = response.find('\r', index)) != std::string::npos ) {
-            response.insert(++index, "\n");
-        }
-    }
-
-    return response;
-}
-
-size_t Elm327::min_command_size()
-{
-    size_t min_command_size = std::string::npos;
-
-    for( auto &command : m_command_set ) {
-        size_t command_size = command.first.length();
-
-        if (command_size < min_command_size) {
-            min_command_size = command_size;
-        }
-    }
-
-    return min_command_size;
-}
-
-size_t Elm327::max_command_size()
-{
-    size_t max_command_size = 0;
-
-    for( auto &command : m_command_set ) {
-        size_t command_size = command.first.length();
-
-        if (command_size > max_command_size) {
-            max_command_size = command_size;
-        }
-    }
-
-    return max_command_size;
-}
-
-unsigned long Elm327::hex_string_to_int(const std::string &str)
-{
-    if ( !str.empty() && (str.find_first_not_of("0123456789ABCDEF") == std::string::npos) ) {
-        return std::stoul(str, 0, 16);
-    }
-
-    return -1;
-}
-
-std::vector<std::string> Elm327::get_arguments(const std::string& str)
-{
-    std::vector<std::string> args;
-    std::istringstream iss(str);
-
-    for (std::string s; iss >> s; ) {
-        args.push_back(s);
-    }
-
-    return args;
-}
-
-int Elm327::get_integer_argument(const std::vector<std::string> &args)
-{
-    if ( args.size() == 1 ) {
-        return hex_string_to_int(args.at(0));
-    }
-
-    return -1;
-}
-
-std::string Elm327::set_config(const elm::config::config_t config_item, const std::vector<std::string> &args)
-{
-    int arg = get_integer_argument(args);
-
-    if ( arg == 0 || arg == 1 ) {
-        set_config(config_item, static_cast<bool>(arg));
-        return elm::response_ok;
-    }
-
-    return elm::response_invalid;
-}
-
-void Elm327::set_config(const elm::config::config_t config_item, const bool value)
-{
-    switch (config_item) {
-    case elm::config::can_auto_formatting: m_config->set_can_auto_formatting(value); break;
-
-    case elm::config::can_flow_control: m_config->set_can_flow_control(value); break;
-
-    case elm::config::can_silent_mode: m_config->set_can_silent_mode(value); break;
-
-    case elm::config::dlc: m_config->set_dlc(value); break;
-
-    case elm::config::echo: m_config->set_echo(value); break;
-
-    case elm::config::headers: m_config->set_headers(value); break;
-
-    case elm::config::j1939_header_formatting: m_config->set_j1939_header_formatting(value); break;
-
-    case elm::config::keyword_checking: m_config->set_keyword_checking(value); break;
-
-    case elm::config::linefeeds: m_config->set_linefeeds(value); break;
-
-    case elm::config::memory: m_config->set_memory(value); break;
-
-    case elm::config::responses: m_config->set_responses(value); break;
-
-    case elm::config::spaces: m_config->set_spaces(value); break;
-
-    case elm::config::variable_dlc: m_config->set_variable_dlc(value); break;
+    if ( m_can_bus_mode == can::mode::connected ) {
+        m_transmit_callback(message);
     }
 }
 
-bool Elm327::is_command(const std::string &request)
+bool Elm327::is_command(const std::string &request) const
 {
-    if ( request.find("AT") != std::string::npos ||
-         request.find("ST") != std::string::npos ) {
+    if ( request.find("AT") == 0 ) {
         return true;
     }
 
@@ -203,49 +86,100 @@ bool Elm327::is_command(const std::string &request)
 
 std::string Elm327::handle_command(const std::string &request)
 {
-    std::string response = elm::response_invalid;
-
     if ( request.length() >= m_min_command_size ) {
 
-        size_t command_size;
         std::string command;
 
-        // if the command and arguments are already separated by SPACE, pick command
-        if ( (command_size = request.find_first_of(" ")) != std::string::npos ) {
-            command = request.substr(0, command_size);
-            response = handle_command(command, request.substr(command_size));
+        // remove spaces betwen AT and the command, for example, "AT I" becomes "ATI"
+        if ( request.find_first_of(' ') == 2 ) {
+            size_t index = request.find_first_not_of(' ', 2);
+
+            if ( index != std::string::npos ) {
+                std::copy_if(request.begin(), request.begin() + index, std::back_inserter(command), [](char c) { return c != ' '; } );
+                command.append(request, index, std::string::npos);
+            }
+        } else {
+            command = request;
+        }
+
+        size_t command_size = command.find_first_of(' ');
+
+        // if the command and arguments are already separated by SPACE, select command
+        if ( command_size != std::string::npos ) {
+            return (handle_command(command.substr(0, command_size), command.substr(command_size)));
 
         } else {
-            for (command_size = std::min(m_max_command_size, request.size()); command_size >= m_min_command_size; --command_size) {
-                command = request.substr(0, command_size);
-                response = handle_command(command, request.substr(command_size));
+            for (command_size = std::min(m_max_command_size, command.size()); command_size >= m_min_command_size; --command_size) {
 
-                // if the command has been handled, exit loop
-                if (response != elm::response_invalid) {
-                    break;
+                std::string response = handle_command(command.substr(0, command_size), command.substr(command_size));
+
+                if (response != elm::response::invalid) {
+                    return response;
                 }
             }
         }
     }
 
-    return response;
+    return elm::response::invalid;
 }
 
 std::string Elm327::handle_command(const std::string &command, const std::string &args)
 {
     try {
         const command_handler_t command_handler = m_command_set.at(command);
-        return command_handler(get_arguments(args));
+        return command_handler(split_string(args));
     } catch ( const std::out_of_range& oor) { }
 
-    return elm::response_invalid;
+    return elm::response::invalid;
 }
 
-void Elm327::handle_can_message(const std::string &request)
+std::string Elm327::handle_obd_request(const std::string &request)
 {
-    can::can_msg_t message;
+    std::string req;
+    // remove spaces from request
+    std::copy_if(request.begin(), request.end(), std::back_inserter(req), [](char c) { return c != ' '; } );
 
-    transmit_on_can_bus(message);
+    if ( ( req.length() > 0 ) && ( req.length() % 2 ) ) {
+        req.resize(req.length() - 1);
+    }
+
+    if ( req.length() < 2 ) {
+        return  elm::response::invalid;
+    }
+
+    // convert all bytes to a vector
+    can::can_data_t data_bytes;
+
+    for ( size_t i = 0; i < req.length(); i += 2 ) {
+        int data_byte = hex_string_to_int( req.substr(i, 2) );
+
+        if ( data_byte < 0 ) {
+            return  elm::response::invalid;
+        }
+
+        data_bytes.push_back( static_cast<std::byte>(data_byte) );
+    }
+
+    // create individual CAN messages and transmit on CAN bus
+    can::can_id_t msg_header = m_config->get_obd_request_header();
+    can::can_data_t msg_data (8);
+
+    can::can_data_t::iterator begin = data_bytes.begin();
+    size_t remaining;
+
+    while ( (remaining = data_bytes.end() - begin) > 0 ) {
+        size_t len = ( remaining < 7) ? remaining : 7;
+
+        msg_data[0] = static_cast<can::can_byte_t>( len );
+        std::copy( begin, begin + len, msg_data.begin() + 1 );
+        std::fill( msg_data.begin() + len, msg_data.end(), static_cast<can::can_byte_t>( 0 ) );
+
+        transmit(std::make_pair(msg_header, msg_data));
+
+        begin += len;
+    }
+
+    return elm::response::pending;
 }
 
 std::string Elm327::handle_AT_at(const std::vector<std::string> &args)
@@ -269,10 +203,10 @@ std::string Elm327::handle_ATAT(const std::vector<std::string> &args)
 
     if ( timing >= 0 && timing <= 2 ) {
         m_config->set_adaptive_timing(static_cast<elm::config::adaptive_timing_t>(timing));
-        return elm::response_ok;
+        return elm::response::ok;
     }
 
-    return elm::response_invalid;
+    return elm::response::invalid;
 }
 
 std::string Elm327::handle_ATBD(const std::vector<std::string> &args)
@@ -351,11 +285,11 @@ std::string Elm327::handle_ATD(const std::vector<std::string> &args)
         return set_config(elm::config::dlc, args);
 
     } else if ( args.size() == 0 ) {
-        m_config->load_defaults();
-        return handle_ATI(args);
+        load_defaults();
+        return elm::device_id;
     }
 
-    return elm::response_invalid;
+    return elm::response::invalid;
 }
 
 std::string Elm327::handle_ATDM1(const std::vector<std::string> &args)
@@ -404,7 +338,7 @@ std::string Elm327::handle_ATI(const std::vector<std::string> &args)
         return elm::device_id;
     }
 
-    return elm::response_invalid;
+    return elm::response::invalid;
 }
 
 std::string Elm327::handle_ATIB(const std::vector<std::string> &args)
@@ -564,11 +498,9 @@ std::string Elm327::handle_ATSI(const std::vector<std::string> &args)
 
 std::string Elm327::handle_ATSP(const std::vector<std::string> &args)
 {
-    if ( m_config->set_obd_protocol(static_cast<elm::obd::protocol_t>(get_integer_argument(args))) ) {
-        return elm::response_ok;
-    }
+    bool response = set_obd_protocol( static_cast<elm::obd::protocol_t>(get_integer_argument(args)) );
 
-    return elm::response_invalid;
+    return ( ( response ) ? ( elm::response::ok ) : ( elm::response::invalid ) );
 }
 
 std::string Elm327::handle_ATSR(const std::vector<std::string> &args)
@@ -618,11 +550,163 @@ std::string Elm327::handle_ATWS(const std::vector<std::string> &args)
 
 std::string Elm327::handle_ATZ(const std::vector<std::string> &args)
 {
-    return handle_ATD(args);
+    if ( args.size() == 0 ) {
+        reset_device();
+        return elm::response::ok;
+    }
+
+    return elm::response::invalid;
 }
 
 std::string Elm327::command_not_implemented(const std::vector<std::string> &args)
 {
     (void) args;
-    return elm::response_invalid;
+    return elm::response::invalid;
 }
+
+void Elm327::reset_device()
+{
+    load_defaults();
+}
+
+void Elm327::load_defaults()
+{
+    set_can_bus_mode( can::mode::disconnected );
+    set_obd_protocol( elm::obd::protocol::unknown );
+    m_config->load_defaults();
+}
+
+void Elm327::set_can_bus_mode(can::mode_t mode)
+{
+    m_can_bus_mode = mode;
+}
+
+std::string Elm327::set_config(const elm::config::config_t config_item, const std::vector<std::string> &args)
+{
+    int arg = get_integer_argument(args);
+
+    if ( arg == 0 || arg == 1 ) {
+        set_config(config_item, static_cast<bool>(arg));
+        return elm::response::ok;
+    }
+
+    return elm::response::invalid;
+}
+
+void Elm327::set_config(const elm::config::config_t config_item, const bool value)
+{
+    switch (config_item) {
+    case elm::config::can_auto_formatting: m_config->set_can_auto_formatting(value); break;
+
+    case elm::config::can_flow_control: m_config->set_can_flow_control(value); break;
+
+    case elm::config::can_silent_mode: m_config->set_can_silent_mode(value); break;
+
+    case elm::config::dlc: m_config->set_dlc(value); break;
+
+    case elm::config::echo: m_config->set_echo(value); break;
+
+    case elm::config::headers: m_config->set_headers(value); break;
+
+    case elm::config::j1939_header_formatting: m_config->set_j1939_header_formatting(value); break;
+
+    case elm::config::keyword_checking: m_config->set_keyword_checking(value); break;
+
+    case elm::config::linefeeds: m_config->set_linefeeds(value); break;
+
+    case elm::config::memory: m_config->set_memory(value); break;
+
+    case elm::config::responses: m_config->set_responses(value); break;
+
+    case elm::config::spaces: m_config->set_spaces(value); break;
+
+    case elm::config::variable_dlc: m_config->set_variable_dlc(value); break;
+    }
+}
+
+bool Elm327::set_obd_protocol(const elm::obd::protocol_t obd_protocol)
+{
+    if ( m_config->set_obd_protocol( obd_protocol )) {
+        set_can_bus_mode( (obd_protocol == elm::obd::protocol::unknown) ? can::mode::disconnected : can::mode::connected );
+        m_protocol_select_callback( obd_protocol );
+        return true;
+    }
+
+    return false;
+}
+
+size_t Elm327::min_command_size()
+{
+    size_t min_command_size = std::string::npos;
+
+    for( auto &command : m_command_set ) {
+        size_t command_size = command.first.length();
+
+        if (command_size < min_command_size) {
+            min_command_size = command_size;
+        }
+    }
+
+    return min_command_size;
+}
+
+size_t Elm327::max_command_size()
+{
+    size_t max_command_size = 0;
+
+    for( auto &command : m_command_set ) {
+        size_t command_size = command.first.length();
+
+        if (command_size > max_command_size) {
+            max_command_size = command_size;
+        }
+    }
+
+    return max_command_size;
+}
+
+std::string Elm327::compose_serial_message(const std::string &str)
+{
+    std::string response = str;
+
+    if (m_config->get_linefeeds()) {
+        size_t index = 0;
+
+        while ( (index = response.find('\r', index)) != std::string::npos ) {
+            response.insert(++index, "\n");
+        }
+    }
+
+    return response;
+}
+
+std::vector<std::string> Elm327::split_string(const std::string& str)
+{
+    std::vector<std::string> args;
+    std::istringstream iss(str);
+
+    for (std::string s; iss >> s; ) {
+        args.push_back(s);
+    }
+
+    return args;
+}
+
+int Elm327::get_integer_argument(const std::vector<std::string> &args)
+{
+    if ( args.size() == 1 ) {
+        return hex_string_to_int(args.at(0));
+    }
+
+    return -1;
+}
+
+int Elm327::hex_string_to_int(const std::string &str)
+{
+    if ( !str.empty() && (str.find_first_not_of("0123456789ABCDEF") == std::string::npos) ) {
+        return std::stoi(str, 0, 16);
+    }
+
+    return -1;
+}
+

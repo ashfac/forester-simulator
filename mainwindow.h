@@ -37,7 +37,7 @@ private slots:
     void onSerialReceived();
 
     void sendToSubaruForester(const QByteArray &data);
-    void onDataLinkReceived(const std::string &data);
+    void onSubaruForesterReceived(const std::string &data);
 
     void logData(const QByteArray data);
 

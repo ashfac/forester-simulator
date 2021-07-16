@@ -1,7 +1,11 @@
 #include "tcm.h"
 
-TCM::TCM(const can::can_id_t can_id, const std::shared_ptr<CanBus> can_bus) :
-    ECU(can_id, can_bus)
+TCM::TCM(const std::shared_ptr<CanBus> can_bus, const can::can_id_t ecu_id, const can::protocol_t protocol) :
+    ECU(can_bus, ecu_id, protocol)
 {
-    set_can_protocol(subaru::CAN_PROTOCOL);
+}
+
+void TCM::put(const can::protocol_t protocol, can::can_msg_t message)
+{
+    if ( get_protocol() != protocol ) return;
 }

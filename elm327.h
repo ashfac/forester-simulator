@@ -14,8 +14,8 @@
 class Elm327
 {
 public:
-    using transmit_on_can_bus_callback_t = std::function<void(const can::can_msg_t&)>;
-    using send_to_serial_callback_t = std::function<void(const std::string&)>;
+    using transmit_callback_t = std::function<void(const can::can_msg_t&)>;
+    using respond_callback_t = std::function<void(const std::string&)>;
     using protocol_select_callback_t = std::function<void(const elm::obd::protocol_t)>;
 
 private:
@@ -23,35 +23,22 @@ private:
     using command_set_t = std::map<std::string, command_handler_t>;
 
 public:
-    Elm327(const transmit_on_can_bus_callback_t respond_can_callback,
-           const send_to_serial_callback_t respond_serial_callback,
+    Elm327(const transmit_callback_t transmit_callback,
+           const respond_callback_t respond_callback,
            const protocol_select_callback_t protocol_select_callback);
 
-    void send(const std::string &data);
-    void send(const can::can_msg_t &message);
+    void request(const std::string &data);
+    void put(const can::can_msg_t &message);
 
 private:
     void echo(const std::string &data);
-    void send_to_serial(const std::string &response);
-    void transmit_on_can_bus(const can::can_msg_t &message);
+    void respond(const std::string &response);
+    void transmit(const can::can_msg_t &message);
 
-    std::string format_response(const std::string &str);
-
-    size_t min_command_size();
-    size_t max_command_size();
-
-    static unsigned long hex_string_to_int(const std::string &str);
-
-    static std::vector<std::string> get_arguments(const std::string& str);
-    static int get_integer_argument(const std::vector<std::string> &args);
-    std::string set_config(const elm::config::config_t config_item, const std::vector<std::string> &args);
-    void set_config(const elm::config::config_t config_item, const bool value);
-
-
-    bool is_command(const std::string &request);
+    bool is_command(const std::string &request) const;
     std::string handle_command(const std::string &request);
     std::string handle_command(const std::string &command, const std::string &args);
-    void handle_can_message(const std::string &request);
+    std::string handle_obd_request(const std::string &request);
 
     // AT commands, in alphabetic order
     std::string handle_AT_at(const std::vector<std::string> &args);
@@ -125,8 +112,24 @@ private:
     std::string handle_ATWS(const std::vector<std::string> &args);
     std::string handle_ATZ(const std::vector<std::string> &args);
 
-
     std::string command_not_implemented(const std::vector<std::string> &args);
+
+    void reset_device();
+    void load_defaults();
+    void set_can_bus_mode(can::mode_t mode);
+
+    std::string set_config(const elm::config::config_t config_item, const std::vector<std::string> &args);
+    void set_config(const elm::config::config_t config_item, const bool value);
+    bool set_obd_protocol(const elm::obd::protocol_t obd_protocol);
+
+    size_t min_command_size();
+    size_t max_command_size();
+
+    std::string compose_serial_message(const std::string &str);
+
+    static std::vector<std::string> split_string(const std::string& str);
+    static int get_integer_argument(const std::vector<std::string> &args);
+    static int hex_string_to_int(const std::string &str);
 
 private:
     const command_set_t m_command_set = {
@@ -202,8 +205,8 @@ private:
         , { "ATZ", std::bind(&Elm327::handle_ATZ, this, std::placeholders::_1) }
     };
 
-    const transmit_on_can_bus_callback_t m_transmit_on_can_bus_callback = nullptr;
-    const send_to_serial_callback_t m_send_to_serial_callback = nullptr;
+    const transmit_callback_t m_transmit_callback = nullptr;
+    const respond_callback_t m_respond_callback = nullptr;
     const protocol_select_callback_t m_protocol_select_callback = nullptr;
 
     size_t m_min_command_size;
@@ -214,6 +217,7 @@ private:
     std::string m_request;
     std::string m_last_request;
 
+    can::mode_t m_can_bus_mode;
 };
 
 #endif // ELM327_H

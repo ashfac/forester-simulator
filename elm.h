@@ -9,9 +9,13 @@ namespace elm {
 
 const std::string device_id = "ELM327 v1.4b";
 
-const std::string response_ok = "OK";
-const std::string response_invalid = "?";
-const std::string response_pending = "!pending!";
+namespace response {
+
+const std::string ok = "OK";
+const std::string invalid = "?";
+const std::string pending = "!pending!";
+
+} // namespace response
 
 namespace obd {
 
@@ -40,7 +44,6 @@ constexpr protocol MAX = protocol::user2_can_11bit_id_50kbaud;
 } // namespace protocol
 
 using protocol_t = elm::obd::protocol::protocol;
-
 constexpr can::can_id_t BROADCAST_HEADER_STANDARD = 0x7DF;
 
 } // namespace obd
@@ -91,7 +94,7 @@ constexpr bool SPACES = true;
 constexpr bool VARIABLE_DLC = true;
 
 constexpr adaptive_timing_t ADAPTIVE_TIMING = adaptive_timing::auto_1;
-constexpr elm::obd::protocol_t OBD_PROTOCOL = elm::obd::protocol::automatic;
+constexpr elm::obd::protocol_t OBD_PROTOCOL = elm::obd::protocol::unknown;
 
 }
 
