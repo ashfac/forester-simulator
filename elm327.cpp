@@ -58,7 +58,7 @@ void Elm327::put(const can::msg_t &message)
     std::string response = int_to_hex_string(message.first, 3);
 
     for ( auto b : message.second ) {
-        response += " " + int_to_hex_string( b );
+        response += " " + int_to_hex_string( static_cast<int>(b) );
     }
 
     // convert response to UPPERCASE charachters
@@ -171,7 +171,7 @@ std::string Elm327::handle_obd_request(const std::string &request)
             return  elm::response::invalid;
         }
 
-        data_bytes.push_back( data_byte );
+        data_bytes.push_back( static_cast<can::byte_t>( data_byte ) );
     }
 
     transmit_obd_request( data_bytes );

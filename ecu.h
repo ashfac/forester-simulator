@@ -32,7 +32,7 @@ protected:
     can::protocol_t m_protocol;
     can::header_t m_obd_request_header;
 
-    std::map<obd::pid_t, obd::pid_data_t> m_pids;
+    std::map<obd::pid_t, can::data_t> m_pids;
 };
 
 #endif // ECU_H

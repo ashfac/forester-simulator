@@ -32,7 +32,7 @@ enum protocol: int {
 } // namespace protocol
 
 using header_t = unsigned int;
-using byte_t = unsigned int;
+using byte_t = std::byte;
 using data_t = std::vector<byte_t>;
 using msg_t = std::pair<header_t, data_t>;
 using mode_t = can::mode::mode;
