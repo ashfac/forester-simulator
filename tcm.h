@@ -2,13 +2,14 @@
 #define TCM_H
 
 #include "ecu.h"
+#include "subaru.h"
 
 class TCM : public ECU
 {
 public:
-    TCM(const std::shared_ptr<CanBus> can_bus, const can::can_id_t ecu_id, const can::protocol_t protocol);
+    TCM(const std::shared_ptr<CanBus> can_bus);
 
-    void put(const can::protocol_t protocol, can::can_msg_t message);
+    void put(const can::protocol_t protocol, const can::msg_t &message);
 };
 
 #endif // TCM_H

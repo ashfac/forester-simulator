@@ -44,7 +44,7 @@ constexpr protocol MAX = protocol::user2_can_11bit_id_50kbaud;
 } // namespace protocol
 
 using protocol_t = elm::obd::protocol::protocol;
-constexpr can::can_id_t BROADCAST_HEADER_STANDARD = 0x7DF;
+constexpr can::header_t BROADCAST_HEADER_STANDARD = 0x7DF;
 
 } // namespace obd
 

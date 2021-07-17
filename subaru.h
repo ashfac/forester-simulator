@@ -2,22 +2,23 @@
 #define SUBARU_H
 
 #include "can.h"
+#include "obd.h"
 
 namespace subaru {
 
-namespace ecu {
+namespace ecm {
 
-constexpr can::protocol_t protocol = can::protocol::iso_15765_4_can_11bit_id_500kbaud;
+constexpr can::header_t obd_request_header  = 0x7E0;
 
-namespace id {
+} // namespace ecm
 
-constexpr can::can_id_t dlc = 0x000;
-constexpr can::can_id_t ecm = 0x7E0;
-constexpr can::can_id_t tcm = 0x7E1;
+namespace tcm {
 
-} // namespace id
+constexpr can::header_t obd_request_header  = 0x7E1;
 
-} // namespace ecu
+} // namespace tcm
+
+constexpr can::protocol_t can_bus_protocol = can::protocol::iso_15765_4_can_11bit_id_500kbaud;
 
 } // namespace subaru
 

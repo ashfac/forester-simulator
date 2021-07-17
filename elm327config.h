@@ -55,8 +55,8 @@ public:
     elm::obd::protocol_t get_obd_protocol() const { return m_obd_protocol; }
     bool set_obd_protocol(elm::obd::protocol_t arg);
 
-    can::can_id_t get_obd_request_header() const { return m_obd_request_header; }
-    void set_obd_request_header(can::can_id_t arg) { m_obd_request_header = arg; }
+    can::header_t get_obd_request_header() const { return m_obd_request_header; }
+    void set_obd_request_header(can::header_t arg) { m_obd_request_header = arg; }
 
 private:
     bool m_can_auto_formatting;
@@ -75,7 +75,7 @@ private:
 
     elm::config::adaptive_timing_t m_adaptive_timing;
     elm::obd::protocol_t m_obd_protocol;
-    can::can_id_t m_obd_request_header;
+    can::header_t m_obd_request_header;
 
 private:
 

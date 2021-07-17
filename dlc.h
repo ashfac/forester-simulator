@@ -28,15 +28,15 @@ private:
     using protocol_select_callback_t = std::function<void(const elm::obd::protocol_t)>;
 
 public:
-    DLC(const std::shared_ptr<CanBus> can_bus, const can::can_id_t ecu_id, const can::protocol_t protocol);
+    DLC(const std::shared_ptr<CanBus> can_bus);
     void init(const dlc::device_t device, respond_callback_t callback);
 
     void request(const std::string &request) const;
-    void put(const can::protocol_t protocol, can::can_msg_t message);
+    void put(const can::protocol_t protocol, const can::msg_t &message);
 
 private:
     void on_respond(const std::string &response) const;
-    void on_transmit(const can::can_msg_t &message) const;
+    void on_transmit(const can::header_t header, const can::data_t &data) const;
     void on_select_protocol(const elm::obd::protocol_t protocol);
 
     std::unique_ptr<Elm327> m_elm327 = nullptr;

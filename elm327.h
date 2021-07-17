@@ -14,7 +14,7 @@
 class Elm327
 {
 public:
-    using transmit_callback_t = std::function<void(const can::can_msg_t&)>;
+    using transmit_callback_t = std::function<void(const can::header_t header, const can::data_t &data)>;
     using respond_callback_t = std::function<void(const std::string&)>;
     using protocol_select_callback_t = std::function<void(const elm::obd::protocol_t)>;
 
@@ -28,12 +28,12 @@ public:
            const protocol_select_callback_t protocol_select_callback);
 
     void request(const std::string &data);
-    void put(const can::can_msg_t &message);
+    void put(const can::msg_t &message);
 
 private:
     void echo(const std::string &data);
     void respond(const std::string &response);
-    void transmit(const can::can_msg_t &message);
+    void transmit_obd_request(const can::data_t &data);
 
     bool is_command(const std::string &request) const;
     std::string handle_command(const std::string &request);
@@ -130,6 +130,7 @@ private:
     static std::vector<std::string> split_string(const std::string& str);
     static int get_integer_argument(const std::vector<std::string> &args);
     static int hex_string_to_int(const std::string &str);
+    static std::string int_to_hex_string(const int i, const int width = 2);
 
 private:
     const command_set_t m_command_set = {

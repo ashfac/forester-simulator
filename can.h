@@ -6,11 +6,6 @@
 
 namespace can {
 
-using can_id_t = unsigned int;
-using can_byte_t = std::byte;
-using can_data_t = std::vector<can_byte_t>;
-using can_msg_t = std::pair<can_id_t, can_data_t>;
-
 namespace mode {
 
 enum mode : int {
@@ -20,8 +15,6 @@ enum mode : int {
 };
 
 } // namespace mode
-
-using mode_t = can::mode::mode;
 
 namespace protocol {
 
@@ -38,6 +31,11 @@ enum protocol: int {
 
 } // namespace protocol
 
+using header_t = unsigned int;
+using byte_t = unsigned int;
+using data_t = std::vector<byte_t>;
+using msg_t = std::pair<header_t, data_t>;
+using mode_t = can::mode::mode;
 using protocol_t = can::protocol::protocol;
 
 } // namespace can

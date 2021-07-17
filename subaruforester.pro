@@ -15,7 +15,6 @@ SOURCES += \
     ecu.cpp \
     elm327.cpp \
     elm327config.cpp \
-    obd2.cpp \
     obdlink.cpp \
     subaruforester.cpp \
     tcm.cpp \
@@ -34,7 +33,6 @@ HEADERS += \
     elm327.h \
     elm327config.h \
     obd.h \
-    obd2.h \
     obdlink.h \
     subaru.h \
     subaruforester.h \

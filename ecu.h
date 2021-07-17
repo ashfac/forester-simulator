@@ -1,6 +1,8 @@
 #ifndef ECU_H
 #define ECU_H
 
+#include <map>
+
 #include "can.h"
 #include "obd.h"
 #include "canbus.h"
@@ -10,23 +12,27 @@ class CanBus;
 class ECU : public std::enable_shared_from_this<ECU>
 {
 public:
-    ECU(const std::shared_ptr<CanBus> can_bus, const can::can_id_t ecu_id, const can::protocol_t protocol);
+    ECU();
 
-    virtual void put(const can::protocol_t protocol, can::can_msg_t message) = 0;
+    virtual void put(const can::protocol_t protocol, const can::msg_t &message) = 0;
 
 protected:
-    void transmit(const can::can_msg_t &message) const;
+    void transmit(const can::header_t header, const can::data_t &data) const;
 
-    const std::shared_ptr<CanBus> get_can_bus() const { return m_can_bus; }
-    can::can_id_t get_ecu_id() const { return m_ecu_id; }
+    void set_obd_request_header(can::header_t header) { m_obd_request_header = header; }
+    can::header_t get_obd_request_header() const { return m_obd_request_header; }
+    can::header_t get_obd_response_header() const { return (m_obd_request_header | obd::response_header_mask); }
 
-    can::protocol_t get_protocol() const { return m_protocol; }
-    void set_protocol(const can::protocol_t  protocol) { m_protocol = protocol; };
+    can::data_t get_obd_pid(can::data_t &request) const;
+    static obd::mode_t get_obd_mode(const can::data_t &request);
+    static size_t get_obd_pid_request_size(const obd::mode_t mode);
 
-private:
+protected:
     std::shared_ptr<CanBus> m_can_bus;
-    can::can_id_t m_ecu_id;
     can::protocol_t m_protocol;
+    can::header_t m_obd_request_header;
+
+    std::map<obd::pid_t, obd::pid_data_t> m_pids;
 };
 
 #endif // ECU_H

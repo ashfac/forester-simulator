@@ -6,12 +6,12 @@ CanBus::CanBus()
 {
 }
 
-void CanBus::attach(const std::shared_ptr<const ECU> &ecu)
+void CanBus::attach(const std::shared_ptr<ECU> &ecu)
 {
     m_ecus.push_back(ecu);
 }
 
-void CanBus::detach(const std::shared_ptr<const ECU> &ecu)
+void CanBus::detach(const std::shared_ptr<ECU> &ecu)
 {
     auto it = std::find(m_ecus.begin(), m_ecus.end(), ecu);
 
@@ -20,7 +20,7 @@ void CanBus::detach(const std::shared_ptr<const ECU> &ecu)
     }
 }
 
-void CanBus::transmit(const std::shared_ptr<const ECU> &sender, const can::protocol_t protocol, const can::can_msg_t &message) const
+void CanBus::transmit(const std::shared_ptr<const ECU> &sender, const can::protocol_t protocol, const can::msg_t &message) const
 {
     for ( auto &ecu : m_ecus ) {
         if ( ecu != sender ) {

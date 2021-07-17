@@ -1,3 +1,7 @@
+
+#include <sstream>
+#include <iomanip>
+
 #include "elm327.h"
 
 Elm327::Elm327( const transmit_callback_t transmit_callback,
@@ -49,9 +53,19 @@ void Elm327::request( const std::string &data )
     }
 }
 
-void Elm327::put(const can::can_msg_t &message)
+void Elm327::put(const can::msg_t &message)
 {
-    (void) message;
+    std::string response = int_to_hex_string(message.first, 3);
+
+    for ( auto b : message.second ) {
+        response += " " + int_to_hex_string( b );
+    }
+
+    // convert response to UPPERCASE charachters
+    std::transform(response.begin(), response.end(), response.begin(),
+        [](unsigned char c){ return std::toupper(c); });
+
+    respond(response);
 }
 
 void Elm327::echo(const std::string &data)
@@ -68,10 +82,10 @@ void Elm327::respond(const std::string &response)
     }
 }
 
-void Elm327::transmit(const can::can_msg_t &message)
+void Elm327::transmit_obd_request(const can::data_t &data)
 {
     if ( m_can_bus_mode == can::mode::connected ) {
-        m_transmit_callback(message);
+        m_transmit_callback( m_config->get_obd_request_header(), data );
     }
 }
 
@@ -148,7 +162,7 @@ std::string Elm327::handle_obd_request(const std::string &request)
     }
 
     // convert all bytes to a vector
-    can::can_data_t data_bytes;
+    can::data_t data_bytes;
 
     for ( size_t i = 0; i < req.length(); i += 2 ) {
         int data_byte = hex_string_to_int( req.substr(i, 2) );
@@ -157,27 +171,11 @@ std::string Elm327::handle_obd_request(const std::string &request)
             return  elm::response::invalid;
         }
 
-        data_bytes.push_back( static_cast<std::byte>(data_byte) );
+        data_bytes.push_back( data_byte );
     }
 
-    // create individual CAN messages and transmit on CAN bus
-    can::can_id_t msg_header = m_config->get_obd_request_header();
-    can::can_data_t msg_data (8);
+    transmit_obd_request( data_bytes );
 
-    can::can_data_t::iterator begin = data_bytes.begin();
-    size_t remaining;
-
-    while ( (remaining = data_bytes.end() - begin) > 0 ) {
-        size_t len = ( remaining < 7) ? remaining : 7;
-
-        msg_data[0] = static_cast<can::can_byte_t>( len );
-        std::copy( begin, begin + len, msg_data.begin() + 1 );
-        std::fill( msg_data.begin() + len, msg_data.end(), static_cast<can::can_byte_t>( 0 ) );
-
-        transmit(std::make_pair(msg_header, msg_data));
-
-        begin += len;
-    }
 
     return elm::response::pending;
 }
@@ -552,7 +550,7 @@ std::string Elm327::handle_ATZ(const std::vector<std::string> &args)
 {
     if ( args.size() == 0 ) {
         reset_device();
-        return elm::response::ok;
+        return elm::device_id;
     }
 
     return elm::response::invalid;
@@ -710,3 +708,9 @@ int Elm327::hex_string_to_int(const std::string &str)
     return -1;
 }
 
+std::string Elm327::int_to_hex_string(const int i, const int width)
+{
+    std::stringstream stream;
+    stream << std::setfill( '0' ) << std::setw( width ) << std::hex << i;
+    return stream.str();
+}

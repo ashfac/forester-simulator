@@ -1,139 +1,37 @@
 #include "ecm.h"
 
-ECM::ECM(const std::shared_ptr<CanBus> can_bus, const can::can_id_t ecu_id, const can::protocol_t protocol) :
-    ECU(can_bus, ecu_id, protocol)
+ECM::ECM(const std::shared_ptr<CanBus> can_bus)
 {
+    m_can_bus = can_bus;
+    m_protocol = subaru::can_bus_protocol;
+    m_obd_request_header = subaru::ecm::obd_request_header;
+
+    m_pids[0x0100] = can::data_t { 0x00, 0x88, 0x1F, 0x00, 0x00, 0x00 };
 }
 
-void ECM::put(const can::protocol_t protocol, can::can_msg_t message)
+void ECM::put(const can::protocol_t protocol, const can::msg_t &message)
 {
-    if ( (get_protocol() != protocol) || (message.second.empty()) ) return;
+    if ( (m_protocol != protocol) || (message.second.empty()) ) return;
 
-    can::can_id_t message_id = message.first;
-    can::can_data_t &data = message.second;
+    can::header_t header = message.first;
+    can::data_t data = message.second;
     size_t data_size = static_cast<size_t>( data.at(0) );
+    can::data_t response;
 
-    if ( message_id == obd::id::broadcast || message_id == get_ecu_id() ) {
-
-        data.resize( data_size );
-        data.erase( data.begin() );
-        handle_obd_request( data );
-
+    if ( header == obd::header_broadcast || header == get_obd_request_header() ) {
+        if ( data_size < 7 ) {
+            data.erase( data.begin() );
+            data.resize( data_size );
+            response = get_obd_pid( data );
+        } else {
+            // expect more messages to come
+        }
     } else {
         // handle non-obd messages
     }
-}
 
-void ECM::handle_obd_request(can::can_data_t &data)
-{
-    if ( data.size() < obd::request::min_size ) return;
-
-    can::can_byte_t mode = data.at( 0 );
-    data.erase(data.begin());
-
-    switch ( mode ) {
-
-    case obd::mode::mode_01_live_data: {
-        handle_mode_01_live_data( data );
-        break;
-    }
-
-    case obd::mode::mode_02_freeze_frame: {
-        handle_mode_02_freeze_frame( data );
-        break;
-    }
-
-    case obd::mode::mode_03_get_stored_trouble_codes: {
-        handle_mode_03_get_stored_trouble_codes( data );
-        break;
-    }
-
-    case obd::mode::mode_04_clear_stored_trouble_codes: {
-        handle_mode_04_clear_stored_trouble_codes( data );
-        break;
-    }
-
-    case obd::mode::mode_05_oxygen_sensors_test_results: {
-        handle_mode_05_oxygen_sensors_test_results( data );
-        break;
-    }
-
-    case obd::mode::mode_06_onboard_systems_test_results: {
-        handle_mode_06_onboard_systems_test_results( data );
-        break;
-    }
-
-    case obd::mode::mode_07_get_pending_trouble_codes: {
-        handle_mode_08_control_onboard_systems( data );
-        break;
-    }
-
-    case obd::mode::mode_08_control_onboard_systems: {
-        handle_mode_08_control_onboard_systems( data );
-        break;
-    }
-
-    case obd::mode::mode_09_vehicle_information: {
-        handle_mode_09_vehicle_information( data );
-        break;
-    }
-
-    case obd::mode::mode_0A_get_permanent_trouble_codes: {
-        handle_mode_0A_get_permanent_trouble_codes( data );
-        break;
-    }
-
-    default:
-        break;
+    if ( !( response.empty() ) ) {
+        transmit( get_obd_response_header(), response );
     }
 }
 
-void ECM::handle_mode_01_live_data(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_02_freeze_frame(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_03_get_stored_trouble_codes(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_04_clear_stored_trouble_codes(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_05_oxygen_sensors_test_results(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_06_onboard_systems_test_results(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_07_get_pending_trouble_codes(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_08_control_onboard_systems(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_09_vehicle_information(can::can_data_t &data)
-{
-
-}
-
-void ECM::handle_mode_0A_get_permanent_trouble_codes(can::can_data_t &data)
-{
-
-}
